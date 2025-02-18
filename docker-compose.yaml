@@ -1,23 +1,37 @@
 services:
+  
   python-api-pkl:
+    container_name: poc-python-api-pkl
     build:
       dockerfile: ./python-api-pkl/Dockerfile
       context: .
     environment:
       WEBSERVER_PORT: 5000
     ports:
-      - 5000:5000
+      - 5001:5000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
 
   python-api-onnx:
+    container_name: poc-python-api-onnx
     build:
       dockerfile: ./python-api-onnx/Dockerfile
       context: .
     environment:
       WEBSERVER_PORT: 5000
     ports:
-      - 5001:5000
+      - 5002:5000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
 
   go-api-onnx:
+    container_name: poc-go-api-onnx
     build:
       dockerfile: ./go-api-onnx/build/Dockerfile
       context: .
@@ -25,5 +39,94 @@ services:
       WEBSERVER_PORT: 5000
       SHARED_LIB_PATH: /go-api-onnx/onnxruntime-linux-x64-1.20.1/lib/libonnxruntime.so
       MODEL_PATH_ONNX: /models/logistic_regression_iris.onnx
+      OTEL_SERVICE_NAME: poc-go-api-onnx
     ports:
-      - 5002:5000
+      - 5003:5000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
+
+  tempo:
+    container_name: grafana_tempo
+    image: grafana/tempo:2.4.1
+    command: [ "--target=all", "--storage.trace.backend=local", "--storage.trace.local.path=/var/tempo", "--auth.enabled=false" ]
+    ports:
+      - "8080:80"
+      - "9095:9095"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./etc/grafana/conf/:/etc/grafana/provisioning/datasources
+      - ./etc/grafana/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./etc/grafana/dashboards:/etc/grafana/dashboards
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1.5G
+
+  otelcol:
+    container_name: opentelemetry-collector
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    command: [ "--config=/etc/otelcol-config.yml" ]
+    volumes:
+      - ./etc/otel/otelcol-config.yml:/etc/otelcol-config.yml
+    ports:
+      - 55687:55687
+      - 5000:4317
+      - 8888:8888
+      - 8889:8889
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus/:/workspace/
+    command:
+      - --config.file=/workspace/prometheus.yml
+      - --enable-feature=exemplar-storage
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  cadvisor:
+    container_name: cadvisor
+    image: gcr.io/cadvisor/cadvisor:v0.49.2
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    restart: always
+    expose:
+      - 8080
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1.8G
