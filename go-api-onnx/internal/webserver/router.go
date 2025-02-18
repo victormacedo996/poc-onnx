@@ -34,7 +34,7 @@ func NewRouter(config config.Config) *Router {
 }
 
 func (r *Router) configureRoutes(health_controller controllers.HealthController, model_controller controllers.ModelController) {
-	r.router.Use(otelhttp.NewMiddleware("my-server"))
+	r.router.Use(otelhttp.NewMiddleware(r.config.OTEL_SERVICE_NAME))
 	r.router.Use(middleware.Logger)
 	r.router.Use(middleware.Recoverer)
 	r.router.Get("/health", health_controller.StatusOk)
@@ -66,53 +66,45 @@ func (r *Router) Start(health_controller controllers.HealthController, model_con
 func (r *Router) configureOtel() (*trace.TracerProvider, *metric.MeterProvider) {
 	ctx := context.Background()
 
-	// Initialize OpenTelemetry Resource
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName("my-chi-app"),
+			semconv.ServiceName(r.config.OTEL_SERVICE_NAME),
 		),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	// Initialize Trace Exporter
 	traceExporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint("localhost:5000"),
+		otlptracegrpc.WithEndpoint(r.config.OTEL_COLLECTOR_OTLP_ENDPOINT),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	// Create Trace Provider
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter),
 		trace.WithResource(res),
 	)
 
-	// Set global Trace Provider
 	otel.SetTracerProvider(traceProvider)
 
-	// Initialize Metrics Exporter
 	metricExporter, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithInsecure(),
-		otlpmetricgrpc.WithEndpoint("localhost:5000"),
+		otlpmetricgrpc.WithEndpoint(r.config.OTEL_COLLECTOR_OTLP_ENDPOINT),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	// Create Meter Provider
 	meterProvider := metric.NewMeterProvider(
 		metric.WithResource(res),
 		metric.WithReader(metric.NewPeriodicReader(metricExporter)),
 	)
 
-	// Set global Meter Provider
 	otel.SetMeterProvider(meterProvider)
 
-	// Set global propagator to tracecontext (to propagate trace headers)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return traceProvider, meterProvider
