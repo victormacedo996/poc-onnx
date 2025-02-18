@@ -1,17 +1,37 @@
 apiVersion: 1
 datasources:
-  - name: Loki
-    type: loki
-    access: proxy
-    url: http://loki:3100
-    jsonData:
-      httpHeaderName1: "X-Scope-OrgID"
-    secureJsonData:
-      httpHeaderValue1: "tenant1"
-
-  - name: Prometheus
+  # <string, required> name of the datasource. Required
+  - uid: prometheus
+    orgId: 1
+    name: Prometheus
     type: prometheus
+    typeName: Prometheus
     access: proxy
     url: http://prometheus:9090
-    basicAuth: false 
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
     isDefault: true
+    jsonData:
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: TraceID
+      httpMethod: POST
+    readOnly: false
+    editable: true
+
+  - uid: tempo
+    orgId: 1
+    name: Tempo
+    type: tempo
+    typeName: Tempo
+    access: proxy
+    url: http://tempo
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: false
+    readOnly: false
+    editable: true

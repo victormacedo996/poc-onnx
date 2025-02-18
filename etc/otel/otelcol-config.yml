@@ -23,13 +23,13 @@ exporters:
     endpoint: http://tempo:4317
     tls:
       insecure: true
-
+      
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug]
+      exporters: [otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]
