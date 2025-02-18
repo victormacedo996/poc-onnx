@@ -173,3 +173,4 @@ cython_debug/
 .pypirc
 
 *_env/
+go-api-onnx/onnxruntime-*
