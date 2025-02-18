@@ -1,4 +1,5 @@
 services:
+
   python-api-pkl:
     build:
       dockerfile: ./python-api-pkl/Dockerfile
@@ -27,3 +28,58 @@ services:
       MODEL_PATH_ONNX: /models/logistic_regression_iris.onnx
     ports:
       - 5002:5000
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    command: [ "--target=all", "--storage.trace.backend=local", "--storage.trace.local.path=/var/tempo", "--auth.enabled=false" ]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3000:3000"
+    # volumes:
+    #   - ./etc/grafana/:/etc/grafana/provisioning/datasources
+    #   - ./etc/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+    #   - ./etc/dashboards:/etc/grafana/dashboards
+    depends_on:
+      - prometheus
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    container_name: otel-col
+    command: [ "--config=/etc/otelcol-config.yml" ]
+    volumes:
+      - ./etc/otel/otelcol-config.yml:/etc/otelcol-config.yml
+    ports:
+      - 55687:55687
+      - 5000:4317
+      - 8888:8888
+      - 8889:8889
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./etc/prometheus:/workspace
+    command:
+      - --config.file=/workspace/prometheus.yml
+      - --enable-feature=exemplar-storage
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.2
+    container_name: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    restart: always
+    expose:
+      - 8080
