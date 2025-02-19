@@ -26,7 +26,7 @@ otel_resource = Resource(attributes={
 })
 
 otlp_exporter = OTLPMetricExporter(endpoint=f"http://{OTEL_COLLECTOR_OTLP_ENDPOINT}")
-otlp_metric_reader = PeriodicExportingMetricReader(otlp_exporter)
+otlp_metric_reader = PeriodicExportingMetricReader(otlp_exporter, export_interval_millis=3000)
 meter_provider = MeterProvider(resource=otel_resource, metric_readers=[otlp_metric_reader])
 metrics.set_meter_provider(meter_provider)
 meter = metrics.get_meter(__name__)

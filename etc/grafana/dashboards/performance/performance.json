@@ -109,7 +109,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "histogram_quantile(0.90, sum by (le, service_name, exported_job) (rate(default_http_server_duration_milliseconds_bucket{exported_job=~\"poc-.+\"}[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, service_name, exported_job) (rate(default_http_server_duration_milliseconds_bucket{exported_job=~\"poc-.+\"}[1m])))",
           "instant": false,
           "interval": "",
           "legendFormat": "{{exported_job}}",
@@ -117,7 +117,7 @@
           "refId": "A"
         }
       ],
-      "title": "Latency (p90)",
+      "title": "Latency (p95)",
       "type": "timeseries"
     },
     {
